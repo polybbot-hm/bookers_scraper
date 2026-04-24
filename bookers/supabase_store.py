@@ -30,7 +30,7 @@ from urllib.parse import quote
 
 from .odds_schema import CANONICAL_COLUMNS
 
-# Columnas en el mismo orden que el CREATE TABLE de schema.sql
+# Columnas en el mismo orden que el INSERT a `odds_history` (ver README: DDL en Supabase)
 _INSERT_COLUMNS: list[str] = CANONICAL_COLUMNS
 _TABLE = os.environ.get("SUPABASE_TABLE", "odds_history")
 

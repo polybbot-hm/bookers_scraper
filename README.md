@@ -37,8 +37,6 @@ scrapers_bookers/
 │   ├── twentytwobet.py      # API LineFeed (JSON; subgames por partido)
 │   └── run_all.py           # Entry point del cron (lanza los 4)
 ├── data/                    # CSV/JSON locales (gitignored)
-├── schema.sql               # DDL de la tabla odds_history en Supabase
-├── schema_migration_market_family.sql  # Migración si ya tenías la tabla sin market_family
 ├── requirements.txt
 ├── Dockerfile               # Imagen Playwright oficial
 ├── railway.json             # Build Dockerfile + cron cada 3h
@@ -82,14 +80,54 @@ SCRAPERS=retabet,kirolbet python scripts/run_all.py
 
 ### 2.1 Crear la tabla
 
-Entra en el SQL Editor de Supabase y ejecuta el contenido de
-[`schema.sql`](./schema.sql). Crea la tabla `odds_history` y los
-índices para consultas típicas (evolución de una cuota, comparativa
-entre casas, etc.).
+En el **SQL Editor** de Supabase ejecuta una vez lo siguiente (tabla + índices + RLS).
+Las columnas insertadas por los scrapers coinciden con `bookers/odds_schema.py`
+(`CANONICAL_COLUMNS`) más `id` e `inserted_at` generados en base de datos.
 
-Si ya tenías la tabla de una versión anterior (sin la columna
-`market_family`), ejecuta en su lugar
-[`schema_migration_market_family.sql`](./schema_migration_market_family.sql).
+```sql
+create table if not exists public.odds_history (
+  id             bigserial primary key,
+  scrape_run_id  text        not null,
+  scraped_at     timestamptz not null,
+  bookmaker      text        not null,
+  competition    text        not null,
+  match_key      text        not null,
+  event_id       text        not null,
+  event_name     text,
+  home_team      text,
+  away_team      text,
+  match_time     text,
+  event_url      text,
+  market_id      text,
+  market_name    text,
+  market_type    text,
+  market_sv      text,
+  market_family  text        not null default '',
+  selection_id   text,
+  selection_name text,
+  odds_decimal   numeric(12, 4),
+  odds_raw       text,
+  is_suspended   boolean     not null default false,
+  inserted_at    timestamptz not null default now()
+);
+
+create index if not exists idx_odds_history_run on public.odds_history (scrape_run_id);
+create index if not exists idx_odds_history_bookmaker_scraped_at on public.odds_history (bookmaker, scraped_at desc);
+create index if not exists idx_odds_history_match_key_scraped_at on public.odds_history (match_key, scraped_at desc);
+create index if not exists idx_odds_history_event_scraped_at on public.odds_history (bookmaker, event_id, scraped_at);
+create index if not exists idx_odds_history_selection_time on public.odds_history (bookmaker, event_id, selection_id, scraped_at);
+create index if not exists idx_odds_history_market_family on public.odds_history (market_family);
+
+alter table public.odds_history enable row level security;
+```
+
+Si la tabla ya existía **sin** `market_family`:
+
+```sql
+alter table public.odds_history
+  add column if not exists market_family text not null default '';
+create index if not exists idx_odds_history_market_family on public.odds_history (market_family);
+```
 
 ### 2.2 Conexión
 
