@@ -8,6 +8,7 @@
     "startCommand": "python scripts/run_all.py",
     "cronSchedule": "0 */3 * * *",
     "restartPolicyType": "NEVER",
-    "numReplicas": 1
+    "numReplicas": 1,
+    "region": "europe-west4"
   }
 }
