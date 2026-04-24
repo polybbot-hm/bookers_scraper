@@ -78,6 +78,18 @@ LALIGA_CHAMP_ID = 127733
 BOOKMAKER       = "22bet"
 COMPETITION     = "LaLiga"
 
+# 22bet tiene un volumen enorme de subgames (>50 por partido). Solo guardamos
+# los mercados de faltas y saques de banda, que son el objetivo del modelo.
+# Cualquier family que no esté aquí se descarta antes de construir la fila.
+_ALLOWED_FAMILIES: frozenset[str] = frozenset({
+    "fouls",
+    "fouls_ou",
+    "fouls_team",
+    "fouls_team_ou",
+    "throw_ins",
+    "throw_ins_ou",
+})
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -314,6 +326,9 @@ def _outcome_to_row(
     market_name = tg_str or (str(mname_raw) if mname_raw is not None else f"gs{gs}_g{g}")
     fam = infer_market_family(market_name, "", altenar_type_id=None)
     if fam in EXCLUDED_MARKET_FAMILIES:
+        return None
+    # 22bet: solo faltas y saques de banda (whitelist estricta).
+    if fam not in _ALLOWED_FAMILIES:
         return None
     # La "línea principal" (Value.E del partido) son los mercados principales
     # del partido (1X2 base, totales de goles, hándicap, BTTS, …). Si la
