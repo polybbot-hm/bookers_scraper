@@ -13,28 +13,57 @@ from typing import Optional
 # Familias de mercado que NO se recogen (mucho volumen, sin edge para los modelos de nicho).
 # Aplica a TODOS los scrapers antes de añadir filas.
 EXCLUDED_MARKET_FAMILIES: frozenset[str] = frozenset({
-    "goals_team",     # goles por jugador / equipo (props)
-    "first_goal",     # primer goleador
-    "goals_ou",       # total goles O/U del partido
-    "match_1x2",      # 1X2 estándar
-    "handicap_eu",    # hándicap europeo
-    "handicap_1x2",   # hándicap 1X2
-    "btts",           # ambos marcan
-    "double_chance",  # doble oportunidad
-    "draw_no_bet",    # apuesta sin empate
+    # ── Mercados principales (mucho volumen, sin edge nicho) ──────────────
+    "goals_team",       # goles por equipo / jugador
+    "first_goal",       # primer goleador
+    "goals_ou",         # total goles O/U del partido
+    "match_1x2",        # 1X2 estándar
+    "handicap_eu",      # hándicap europeo
+    "handicap_1x2",     # hándicap 1X2
+    "btts",             # ambos marcan
+    "double_chance",    # doble oportunidad
+    "draw_no_bet",      # apuesta sin empate
+    # ── Mercados combinados / exactos (muchas combinaciones, sin edge) ────
+    "exact_score",      # marcador exacto / resultado exacto
+    "halftime_fulltime",# mitad/final (HT/FT)
+    "combo",            # combinados tipo mitad+total, DC+totales, etc.
+    "winning_margin",   # margen de victoria
+    "multigoalscorer",  # multimarcadores
+    "first_scoring",    # primer tipo de puntuación / primer gol
 })
 
-# Altenar (Gran Casino): typeId → familia (los que ya filtrábamos en TARGET_MARKETS).
+# Altenar (Gran Casino): typeId → familia.
+# Los typeIds de "mercados exactos / combinados" se clasifican aquí para poder
+# filtrarlos con EXCLUDED_MARKET_FAMILIES sin depender solo de keywords.
 ALTENAR_TYPE_FAMILY: dict[int, str] = {
-    1:   "match_1x2",
-    10:  "double_chance",
-    11:  "draw_no_bet",
-    18:  "goals_ou",
-    29:  "btts",
-    8:   "first_goal",
-    16:  "handicap_eu",
-    14:  "handicap_1x2",
-    166: "corners_ou",
+    # ── Principales ──────────────────────────────────────────────────────
+    1:     "match_1x2",
+    10:    "double_chance",
+    11:    "draw_no_bet",
+    18:    "goals_ou",
+    29:    "btts",
+    8:     "first_goal",
+    16:    "handicap_eu",
+    14:    "handicap_1x2",
+    166:   "corners_ou",
+    # ── Marcadores exactos ────────────────────────────────────────────────
+    45:    "exact_score",    # Resultado exacto
+    46:    "exact_score",    # Mitad/final marcador exacto
+    81:    "exact_score",    # 1ª mitad marcador exacto
+    98:    "exact_score",    # 2ª mitad marcador exacto
+    17779: "exact_score",   # Marcador exacto XL
+    # ── Mitad/final (HT/FT) ──────────────────────────────────────────────
+    47:    "halftime_fulltime",  # Mitad/final
+    # ── Combinados (mitad+total, DC+total, etc.) ──────────────────────────
+    818:   "combo",   # Mitad/final y total X.5
+    819:   "combo",   # Mitad/final y 1ª mitad total X.5
+    3291:  "combo",   # 1er tiempo DC + totales
+    3292:  "combo",   # 2ª mitad DC + totales
+    17625: "combo",   # DC 1ª mitad / DC partido
+    # ── Otros exactos/margen ─────────────────────────────────────────────
+    15:    "winning_margin",   # Margen de victoria
+    551:   "multigoalscorer", # Multimarcadores
+    896:   "first_scoring",   # Primer tipo de puntuación
 }
 
 FAMILY_LABEL_ES: dict[str, str] = {
@@ -121,6 +150,23 @@ def _keyword_family(raw_name: str, market_sv: str) -> Optional[str]:
         return "shots_on_target"
     if is_shot:
         return "shots"
+
+    # ── Mercados exactos / combinados / margen (excluidos) ───────────────
+    if "marcador exacto" in blob or "resultado exacto" in blob:
+        return "exact_score"
+    if "mitad" in blob and "final" in blob:
+        return "halftime_fulltime"
+    if "multimarcador" in blob or "multi-marcador" in blob:
+        return "multigoalscorer"
+    if "margen de victoria" in blob or "margen victory" in blob:
+        return "winning_margin"
+    if "primer tipo de puntuacion" in blob or "first scoring" in blob:
+        return "first_scoring"
+    # Combinados: cualquier mercado que mezcle DC/1X2 + totales en el nombre
+    if ("doble oportunidad" in blob or "double chance" in blob) and (
+        "total" in blob or "mas" in blob or "menos" in blob
+    ):
+        return "combo"
 
     if "primer" in blob and "gol" in blob:
         return "first_goal"
