@@ -149,7 +149,44 @@ SELECTION_LABELS: dict[tuple[int, int], dict[int, str]] = {
     (1, 1):  {1: "home", 2: "draw", 3: "away"},
     (4, 17): {9: "over", 10: "under"},
     (2, 2):  {7: "home", 8: "away"},
+    # Total del equipo local: T11=over, T12=under
+    (5, 15): {11: "over", 12: "under"},
+    # Total del equipo visitante: T13=over, T14=under
+    (6, 62): {13: "over", 14: "under"},
 }
+
+
+# ─────────────────────────────────────────────────────────────
+# SUBTIPOS DE MERCADO (22bet lo llama todo "Faltas" en TG;
+# decodificamos con (GS, G) para enriquecer market_name/family).
+# ─────────────────────────────────────────────────────────────
+# (GS, G) → (etiqueta humana, sufijo de familia a añadir a fouls/throw_ins)
+MARKET_SUBTYPE: dict[tuple[int, int], tuple[str, str]] = {
+    (1, 1):   ("1X2",                    "_1x2"),
+    (2, 8):   ("Doble oportunidad",      "_dc"),
+    (3, 2):   ("Hándicap",               "_handicap"),
+    (4, 17):  ("Total (Over/Under)",     "_ou"),
+    (5, 15):  ("Total equipo local (O/U)",     "_team_home_ou"),
+    (6, 62):  ("Total equipo visitante (O/U)", "_team_away_ou"),
+}
+
+
+def _enrich_market(fam: str, gs: Optional[int], g: Optional[int],
+                   base_name: str) -> tuple[str, str]:
+    """
+    A partir de la familia base (`fouls`/`throw_ins`) y el par (GS, G),
+    devuelve `(market_name_enriquecido, market_family_refinada)`.
+
+    Para mercados no mapeados, añade el sufijo "· GSx_Gy" para al menos
+    distinguirlos visualmente.
+    """
+    key = (gs or -1, g or -1)
+    entry = MARKET_SUBTYPE.get(key)
+    if entry is not None:
+        label, fam_suffix = entry
+        return (f"{base_name} · {label}", f"{fam}{fam_suffix}")
+    # Sin mapa: dejamos el nombre con sufijo GS_G para poder distinguirlo.
+    return (f"{base_name} · GS{gs}_G{g}", fam)
 
 GENERIC_T_LABELS: dict[int, str] = {
     1:  "home",
@@ -338,7 +375,8 @@ def _outcome_to_row(
     if is_main_line and fam == "other":
         return None
 
-    m_readable = format_readable_market_name(fam, market_name, "", altenar_type_id=None)
+    base_name = format_readable_market_name(fam, market_name, "", altenar_type_id=None)
+    m_readable, fam = _enrich_market(fam, gs, g, base_name)
 
     selection = _decode_selection(gs, g, t)
     outcome_name = ev.get("N")
