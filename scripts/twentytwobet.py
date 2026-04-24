@@ -496,7 +496,7 @@ def run(
 
     all_rows: list[dict] = []
     stats = {"ok": 0, "empty": 0, "error": 0}
-    for game in games:
+    for i, game in enumerate(games):
         try:
             rows = parse_event_markets(
                 session, game,
@@ -512,6 +512,14 @@ def run(
             stats["ok"] += 1
         else:
             stats["empty"] += 1
+            # 22bet solo publica mercados de faltas/saques para partidos próximos
+            # (generalmente el partido del día o del día siguiente). En cuanto
+            # encontramos un partido sin datos, los siguientes tampoco los tendrán.
+            log.warning(
+                "22bet: %s devolvió 0 cuotas de faltas/saques — abortando el resto.",
+                f"{game.get('home')} vs {game.get('away')}",
+            )
+            break
 
     log.info(
         "Resumen: ok=%d empty=%d error=%d | total_rows=%d",

@@ -153,13 +153,24 @@ def _split_home_away(text: str) -> tuple[str, str]:
 async def _scrape() -> list[dict]:
     """Devuelve la lista cruda de partidos con sus mercados (sin normalizar)."""
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=HEADLESS)
-        ctx = await browser.new_context(locale="es-ES", user_agent=USER_AGENT)
+        browser = await pw.chromium.launch(
+            headless=HEADLESS,
+            args=[
+                "--no-sandbox",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+            ],
+        )
+        ctx = await browser.new_context(
+            locale="es-ES",
+            user_agent=USER_AGENT,
+            viewport={"width": 1920, "height": 1080},
+        )
         page = await ctx.new_page()
 
         print(f"[kirolbet] Abriendo {LEAGUE_URL}")
         await page.goto(LEAGUE_URL, wait_until="domcontentloaded")
-        await page.wait_for_selector('a[href*="/Sport/Evento/"]', timeout=15000)
+        await page.wait_for_selector('a[href*="/Sport/Evento/"]', timeout=30000)
         events = await page.evaluate(_EXTRACT_EVENT_LINKS_JS)
         print(f"[kirolbet] {len(events)} partidos encontrados")
 
@@ -169,8 +180,8 @@ async def _scrape() -> list[dict]:
             print(f"  [{i}/{len(events)}] {home} vs {away}")
             try:
                 await page.goto(ev["url"], wait_until="domcontentloaded")
-                await page.wait_for_selector(".marketGroup", timeout=15000)
-                await page.wait_for_timeout(800)
+                await page.wait_for_selector(".marketGroup", timeout=30000)
+                await page.wait_for_timeout(1200)
                 markets = await page.evaluate(_EXTRACT_MARKETS_JS)
             except Exception as e:
                 print(f"      !! Error: {e}")
