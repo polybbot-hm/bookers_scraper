@@ -1,12 +1,22 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.pyo
 *.egg-info/
 .eggs/
 dist/
 build/
 .venv/
 venv/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Variables de entorno (SECRETS — no subir nunca)
 .env
@@ -18,6 +28,7 @@ data/*.csv
 data/*.json
 data/*.html
 data/*.png
+data/*.parquet
 !data/.gitkeep
 
 # Carpetas legacy de salida
