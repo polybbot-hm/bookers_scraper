@@ -52,6 +52,7 @@ from bookers.market_labels import (
 )
 from bookers.persistence import save_csv, save_json, save_mongo
 from bookers.supabase_store import save_supabase
+from bookers.schedule_filter import within_window, WINDOW_HOURS
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -352,6 +353,9 @@ def scrape_laliga_odds(
     for e in events:
         dt = e['start_date'][:16].replace('T', ' ') if e['start_date'] else "N/A"
         print(f"        • [{e['id']}] {e['name']} — {dt}")
+
+    events = [e for e in events if within_window(e.get("start_date", ""))]
+    print(f"      → {len(events)} dentro de la ventana de {WINDOW_HOURS:.0f}h")
 
     print(f"\n[2/3] Descargando cuotas de cada partido...")
     all_rows: list[dict] = []

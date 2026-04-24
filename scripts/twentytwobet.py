@@ -68,6 +68,7 @@ from bookers.odds_schema import (
 )
 from bookers.persistence import save_csv, save_json, save_mongo
 from bookers.supabase_store import save_supabase
+from bookers.schedule_filter import within_window, WINDOW_HOURS
 
 
 # ─────────────────────────────────────────────────────────────
@@ -486,6 +487,18 @@ def run(
     games = fetch_laliga_events(session)
     if not games:
         log.warning("No se encontraron partidos de LaLiga — nada que subir.")
+        save_json([], bookmaker=BOOKMAKER, run_stamp=run_stamp)
+        save_csv([],  bookmaker=BOOKMAKER, run_stamp=run_stamp)
+        return []
+
+    before = len(games)
+    games = [g for g in games if within_window(_unix_to_iso(g["start_unix"]))]
+    log.info(
+        "Filtro %dh: %d/%d partidos dentro de la ventana.",
+        int(WINDOW_HOURS), len(games), before,
+    )
+    if not games:
+        log.warning("Ningún partido dentro de la ventana — nada que subir.")
         save_json([], bookmaker=BOOKMAKER, run_stamp=run_stamp)
         save_csv([],  bookmaker=BOOKMAKER, run_stamp=run_stamp)
         return []

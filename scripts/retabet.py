@@ -64,6 +64,7 @@ from bookers.market_labels import (
 )
 from bookers.persistence import save_csv, save_json, save_mongo
 from bookers.supabase_store import save_supabase
+from bookers.schedule_filter import within_window, WINDOW_HOURS
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -368,6 +369,14 @@ async def scrape_laliga() -> list[Event]:
         print(f"    → {len(event_list)} partidos encontrados:")
         for ev in event_list:
             print(f"      · {ev['home_team']} vs {ev['away_team']} ({ev['match_time']}) — ID {ev['event_id']}")
+
+        # Nota: match_time de Retabet solo contiene la hora ("14:15"), sin fecha;
+        # within_window no puede parsear ese formato y devuelve True para todos → no filtra.
+        # El filtro actúa cuando match_time sea ISO completo.
+        before = len(event_list)
+        event_list = [ev for ev in event_list if within_window(ev["match_time"])]
+        if len(event_list) < before:
+            print(f"    → {len(event_list)} dentro de la ventana de {WINDOW_HOURS:.0f}h")
 
         # ── 3. Scraping de cada evento ────────────────────────────────────
         all_events: list[Event] = []
