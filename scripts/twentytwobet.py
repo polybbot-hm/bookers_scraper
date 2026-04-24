@@ -171,22 +171,42 @@ MARKET_SUBTYPE: dict[tuple[int, int], tuple[str, str]] = {
 }
 
 
+# Periodo del subgame (campo `P` del subgame de 22bet):
+#   P=1 → 1.ª mitad, P=2 → 2.ª mitad, None → partido entero.
+_PERIOD_LABEL: dict[Optional[int], str] = {
+    1: "1ª parte",
+    2: "2ª parte",
+}
+_PERIOD_SUFFIX: dict[Optional[int], str] = {
+    1: "_1h",
+    2: "_2h",
+}
+
+
 def _enrich_market(fam: str, gs: Optional[int], g: Optional[int],
-                   base_name: str) -> tuple[str, str]:
+                   base_name: str, period: Optional[int] = None) -> tuple[str, str]:
     """
-    A partir de la familia base (`fouls`/`throw_ins`) y el par (GS, G),
+    A partir de la familia base (`fouls`/`throw_ins`), el par (GS, G) y el
+    periodo del subgame (P=1 1ª mitad, P=2 2ª mitad, None partido entero),
     devuelve `(market_name_enriquecido, market_family_refinada)`.
 
-    Para mercados no mapeados, añade el sufijo "· GSx_Gy" para al menos
-    distinguirlos visualmente.
+    Para mercados no mapeados en MARKET_SUBTYPE, añade el sufijo "· GSx_Gy"
+    para al menos distinguirlos visualmente.
     """
     key = (gs or -1, g or -1)
     entry = MARKET_SUBTYPE.get(key)
     if entry is not None:
         label, fam_suffix = entry
-        return (f"{base_name} · {label}", f"{fam}{fam_suffix}")
-    # Sin mapa: dejamos el nombre con sufijo GS_G para poder distinguirlo.
-    return (f"{base_name} · GS{gs}_G{g}", fam)
+        name = f"{base_name} · {label}"
+        family = f"{fam}{fam_suffix}"
+    else:
+        name = f"{base_name} · GS{gs}_G{g}"
+        family = fam
+    period_label = _PERIOD_LABEL.get(period)
+    if period_label:
+        name = f"{name} · {period_label}"
+        family = f"{family}{_PERIOD_SUFFIX[period]}"
+    return name, family
 
 GENERIC_T_LABELS: dict[int, str] = {
     1:  "home",
@@ -359,6 +379,11 @@ def _outcome_to_row(
     tg_raw     = subgame_meta.get("TG") if subgame_meta else None
     mname_raw  = subgame_meta.get("N") if subgame_meta else None
     subgame_ci = subgame_meta.get("CI") if subgame_meta else None
+    period_raw = subgame_meta.get("P") if subgame_meta else None
+    try:
+        period = int(period_raw) if period_raw is not None else None
+    except (TypeError, ValueError):
+        period = None
 
     tg_str = str(tg_raw).strip() if tg_raw is not None else ""
     market_name = tg_str or (str(mname_raw) if mname_raw is not None else f"gs{gs}_g{g}")
@@ -376,7 +401,7 @@ def _outcome_to_row(
         return None
 
     base_name = format_readable_market_name(fam, market_name, "", altenar_type_id=None)
-    m_readable, fam = _enrich_market(fam, gs, g, base_name)
+    m_readable, fam = _enrich_market(fam, gs, g, base_name, period=period)
 
     selection = _decode_selection(gs, g, t)
     outcome_name = ev.get("N")
