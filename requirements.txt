@@ -1,0 +1,16 @@
+# Scrapers de cuotas (LaLiga)
+# Instalación local:
+#   pip install -r requirements.txt
+#   playwright install chromium
+# En Docker (Railway) se usa la imagen oficial de Playwright,
+# ya trae browsers instalados — sólo hace pip install de este fichero.
+
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+pandas>=2.0.0
+playwright==1.47.0
+playwright-stealth>=2.0.0
+pymongo>=4.6.0
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.0
+requests>=2.31.0

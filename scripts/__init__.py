@@ -1,0 +1,1 @@
+"""Scripts ejecutables de scrapers."""

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Variables de entorno (SECRETS — no subir nunca)
+.env
+.env.local
+.env.*.local
+
+# Datos generados (CSV/JSON por ejecución y depuración)
+data/*.csv
+data/*.json
+data/*.html
+data/*.png
+!data/.gitkeep
+
+# Carpetas legacy de salida
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
